@@ -1,0 +1,42 @@
+version: '3.8'
+
+#Database: PostgreSQL runs locally, accessible from Spring Boot services.
+services:
+  job-app-tracker-db:
+    image: postgres:15
+    container_name: job-app-tracker-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: job-app-tracker
+      TZ: Asia/Kolkata
+      PGTZ: Asia/Kolkata
+    volumes:
+      - job-app-tracker_db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - backend
+
+#PgAdmin
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin1
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@pg.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "5255:80"
+    networks:
+      - backend
+
+
+networks:
+  backend:
+
+volumes:
+  job-app-tracker_db_data:
+  pgadmin_data:
+#  keycloak_data:

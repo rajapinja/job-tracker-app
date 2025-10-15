@@ -1,0 +1,25 @@
+# Node / React
+frontend/node_modules
+frontend/dist
+frontend/backup
+
+# Java / Spring Boot
+backend/target
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# Terraform
+infra/.terraform/
+infra/**/*.tfstate
+infra/**/*.tfstate.backup
+infra/.terraform.lock.hcl
+
+# Docker
+**/.env
+**/logs
+**/*.log
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.iml
