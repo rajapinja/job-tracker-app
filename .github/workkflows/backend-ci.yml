@@ -1,0 +1,56 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: ["main", "dev"]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+jobs:
+  build-deploy-backend:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Build Spring Boot JAR
+        working-directory: ./backend
+        run: ./mvnw -DskipTests clean package
+
+      - name: Login to AWS ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push Docker Image
+        working-directory: ./backend
+        env:
+          ECR_REPOSITORY_URI: ${{ secrets.ECR_REPOSITORY_URI }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          IMAGE_TAG=backend-${{ github.sha }}
+          docker build -t $ECR_REPOSITORY_URI:$IMAGE_TAG .
+          docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Terraform Deploy (ECS + Infra)
+        if: github.ref == 'refs/heads/main'
+        working-directory: ./infra
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          TF_STATE_LOCK_TABLE: ${{ secrets.TF_STATE_LOCK_TABLE }}
+        run: |
+          terraform init -backend-config="bucket=$TF_STATE_BUCKET" \
+                         -backend-config="region=$AWS_REGION" \
+                         -backend-config="dynamodb_table=$TF_STATE_LOCK_TABLE"
+          terraform apply -auto-approve -var "image_tag=$IMAGE_TAG"
